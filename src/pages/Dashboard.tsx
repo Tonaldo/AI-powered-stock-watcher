@@ -1,16 +1,49 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import StockSearch from '../components/StockSearch'
-import StockList from '../components/StockList'
+import StockDetails from '../components/StockDetails'
 import { Stock } from '../types/stock'
+
+const STORAGE_KEY = 'watchedStocks'
 
 export default function Dashboard() {
   const [watchedStocks, setWatchedStocks] = useState<Stock[]>([])
-  const [filterQuery, setFilterQuery] = useState('')
+  const [openAccordion, setOpenAccordion] = useState<string | null>(null)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      try {
+        const stocks = JSON.parse(stored)
+        setWatchedStocks(stocks)
+      } catch {
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    }
+  }, [])
+
+  const saveStocks = (stocks: Stock[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stocks))
+    setWatchedStocks(stocks)
+  }
 
   const handleSelectStock = (stock: Stock) => {
     if (!watchedStocks.find((s) => s.symbol === stock.symbol)) {
-      setWatchedStocks([...watchedStocks, stock])
+      const updated = [...watchedStocks, stock]
+      saveStocks(updated)
     }
+    setOpenAccordion(stock.symbol)
+  }
+
+  const handleRemoveStock = (symbol: string) => {
+    const updated = watchedStocks.filter((s) => s.symbol !== symbol)
+    saveStocks(updated)
+    if (openAccordion === symbol) {
+      setOpenAccordion(null)
+    }
+  }
+
+  const toggleAccordion = (symbol: string) => {
+    setOpenAccordion(openAccordion === symbol ? null : symbol)
   }
 
   return (
@@ -31,36 +64,45 @@ export default function Dashboard() {
       {watchedStocks.length > 0 && (
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold">Watched Stocks</h3>
-              <label className="input input-bordered input-sm flex items-center gap-2">
-                <svg
-                  className="h-[1em] opacity-50"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Filter by symbol or name..."
-                  className="grow"
-                  value={filterQuery}
-                  onChange={(e) => setFilterQuery(e.target.value)}
-                />
-              </label>
+            <h3 className="text-xl font-bold mb-4">Watched Stocks</h3>
+            <div className="join join-vertical w-full">
+              {watchedStocks.map((stock) => (
+                <div key={stock.symbol} className="collapse collapse-arrow join-item border border-base-300">
+                  <input
+                    type="radio"
+                    name="stock-accordion"
+                    checked={openAccordion === stock.symbol}
+                    onChange={() => toggleAccordion(stock.symbol)}
+                  />
+                  <div className="collapse-title text-xl font-medium">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <span>{stock.symbol}</span>
+                        <span className="text-sm opacity-70">{stock.name}</span>
+                      </div>
+                      <button
+                        className="btn btn-xs btn-ghost"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveStock(stock.symbol)
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                  <div className="collapse-content">
+                    <div className="pt-4">
+                      <StockDetails
+                        stock={stock}
+                        onClose={() => handleRemoveStock(stock.symbol)}
+                        showCloseButton={false}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <StockList
-              stocks={watchedStocks}
-              onSelectStock={handleSelectStock}
-              filterQuery={filterQuery}
-            />
           </div>
         </div>
       )}

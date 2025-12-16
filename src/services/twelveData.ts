@@ -3,7 +3,7 @@ import { Stock, StockQuote, TimeSeriesData } from '../types/stock'
 
 const API_KEY = import.meta.env.VITE_TWELVEDATA_API_KEY || ''
 const BASE_URL = 'https://api.twelvedata.com'
-
+console.log('API_KEY', API_KEY)
 const api = axios.create({
     baseURL: BASE_URL,
     params: {
